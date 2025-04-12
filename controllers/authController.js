@@ -41,16 +41,53 @@ const register = async (req, res) => {
     }
 }
 
-const login = async () => {
+const login = async (req, res) => {
+    const {username, password} = req.body;
+    if (!username || !password) {
+        return res.json({success: false, message: "Please provide username and password"});
+    }
 
+    try {
+
+        const user = await userModel.findOne({username});
+        if (!user) {
+            return res.json({success: false, message: "User not found with username"});
+        }
+
+        const isPasswordMatched = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatched) {
+            return res.json({success: false, message: 'Incorrect Password'});
+        }
+
+        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn: '7d'});
+
+        res.cookie('token', token, {
+            httpOnly: true, 
+            maxAge: 7*24*60*60*1000
+        });
+
+        return res.json({success: true, message: 'Logged in'});
+
+    } catch (error) {
+        return res.json({success: false, message: error.message});
+    }
 }
 
-const logout = async () => {
-
+const logout = async (req, res) => {
+    try {
+        res.clearCookie('token', {httpOnly: true});
+        return res.json({success: true, message: 'Logged out'});
+    } catch (error) {
+        return res.json({success: false, message: error.message});
+    }
 }
 
-const isUserAuthenticated = async () => {
-
+const isUserAuthenticated = async (req, res) => {
+    try {
+        return res.json({success: true, message: "Authenticated"});
+    } catch (error) {
+        return res.json({success: false, message: error.message})
+    }
 }
 
 const sendEmailVerifyOtp = async () => {
